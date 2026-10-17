@@ -24,6 +24,11 @@ from typing import Any, Dict, Mapping, Optional, Tuple, Union
 from urllib.parse import unquote, urlparse
 
 from openviking.parse.base import lazy_import
+from openviking.parse.network import (
+    ParserNetworkContext,
+    ParserNetworkOperation,
+    create_parser_httpx_client,
+)
 from openviking.parse.parsers.constants import CODE_EXTENSIONS
 from openviking.parse.parsers.media.constants import (
     AUDIO_EXTENSIONS,
@@ -214,7 +219,12 @@ class URLTypeDetector:
                 client_kwargs["event_hooks"] = event_hooks
                 client_kwargs["trust_env"] = False
 
-            async with httpx.AsyncClient(**client_kwargs) as client:
+            client = create_parser_httpx_client(
+                ParserNetworkContext(ParserNetworkOperation.HTTP_RESOURCE, url),
+                client_cls=httpx.AsyncClient,
+                **client_kwargs,
+            )
+            async with client:
                 response = await client.head(url, headers=headers)
 
                 meta["status_code"] = response.status_code
@@ -583,7 +593,12 @@ class HTTPAccessor(DataAccessor):
                 client_kwargs["event_hooks"] = event_hooks
                 client_kwargs["trust_env"] = False
 
-            async with httpx.AsyncClient(**client_kwargs) as client:
+            client = create_parser_httpx_client(
+                ParserNetworkContext(ParserNetworkOperation.HTTP_RESOURCE, url),
+                client_cls=httpx.AsyncClient,
+                **client_kwargs,
+            )
+            async with client:
                 headers = self._request_headers(tos_signature, tos_access)
                 try:
                     response = await client.get(url, headers=headers)
